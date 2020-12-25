@@ -24,7 +24,7 @@ func main() {
 	for groupIndex, group := range groups {
 		var groupCombinedAnswers []byte
 
-		for personIndex, personAnswers := range group.PersonAnswers {
+		for _, personAnswers := range group.PersonAnswers {
 			// Sort each string
 			//sort.Slice(personAnswers, func(i int, j int) bool { return personAnswers[i] < personAnswers[j] })
 
@@ -33,12 +33,6 @@ func main() {
 					groupCombinedAnswers = append(groupCombinedAnswers, answer)
 				}
 			}
-
-			if personIndex == 0 {
-				groupCombinedAnswers = personAnswers
-				continue
-			}
-
 		}
 		sum += len(groupCombinedAnswers)
 		fmt.Printf("Group %d: %d (%d) %s %s\n", groupIndex, len(groupCombinedAnswers), sum, group, groupCombinedAnswers)
