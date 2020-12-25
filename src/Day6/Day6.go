@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-type Group struct {
+type group struct {
 	// Et array av byte-arrays
 	PersonAnswers [][]byte
 }
@@ -22,33 +22,38 @@ func main() {
 	sum := 0
 
 	for groupIndex, group := range groups {
-		var groupCombinedAnswers []byte
+		result := group.PersonAnswers[0]
 
-		for _, personAnswers := range group.PersonAnswers {
-			// Sort each string
-			//sort.Slice(personAnswers, func(i int, j int) bool { return personAnswers[i] < personAnswers[j] })
+		for personIndex, personAnswers := range group.PersonAnswers {
 
-			for _, answer := range personAnswers {
-				if notAlreadyAdded(groupCombinedAnswers, answer) {
-					groupCombinedAnswers = append(groupCombinedAnswers, answer)
-				}
+			if personIndex == 0 {
+				continue
 			}
+
+			result = intersect(personAnswers, result)
 		}
-		sum += len(groupCombinedAnswers)
-		fmt.Printf("Group %d: %d (%d) %s %s\n", groupIndex, len(groupCombinedAnswers), sum, group, groupCombinedAnswers)
+
+		sum += len(result)
+		fmt.Printf("Group %d: %d (%d) %s %s\n", groupIndex, len(result), sum, group, result)
 	}
 }
 
-func notAlreadyAdded(existingAnswers []byte, newAnswer byte) bool {
-	for _, answer := range existingAnswers {
-		if answer == newAnswer {
-			return false
+func intersect(a, b []byte) (c []byte) {
+	m := make(map[byte]bool)
+
+	for _, item := range a {
+		m[item] = true
+	}
+
+	for _, item := range b {
+		if _, ok := m[item]; ok {
+			c = append(c, item)
 		}
 	}
-	return true
+	return
 }
 
-func scanAnswers(path string) ([]Group, error) {
+func scanAnswers(path string) ([]group, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -56,8 +61,8 @@ func scanAnswers(path string) ([]Group, error) {
 
 	defer file.Close()
 
-	groups := []Group{}
-	groups = append(groups, Group{})
+	groups := []group{}
+	groups = append(groups, group{})
 
 	scanner := bufio.NewScanner(file)
 
@@ -70,7 +75,7 @@ func scanAnswers(path string) ([]Group, error) {
 
 		if line == "" {
 			// new passport
-			groups = append(groups, Group{})
+			groups = append(groups, group{})
 			groupIndex++
 			continue
 		}
