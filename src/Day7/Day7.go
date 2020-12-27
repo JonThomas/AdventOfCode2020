@@ -9,64 +9,53 @@ import (
 )
 
 type luggageRule struct {
-	Inner string
-	Outer string
+	Outer        string
+	Inner        string
+	HowManyInner int
 }
 
 func main() {
 
-	rules, err := scanMap("./Day7input.txt")
+	rules, err := scanRules("./Day7input.txt")
 	if err != nil {
 		fmt.Println("File reading error", err)
 		return
 	}
 
-	luggageRules := parseRules(rules)
+	luggageRules, parseErr := parseRules(rules)
+	if parseErr != nil {
+		fmt.Println("parsing error", err)
+		return
+	}
 
 	result := 0
-	partialResult := 0
-	var alreadyFound []string
 
 	for index, rule := range luggageRules {
-		fmt.Printf("%d: %s (inner) is contained in %s (outer) \n", index+1, rule.Inner, rule.Outer)
+		fmt.Printf("%d: %s contains %d %s\n", index+1, rule.Outer, rule.HowManyInner, rule.Inner)
 
-		if rule.Inner == "shiny gold bag" {
-			partialResult, alreadyFound = recurse(rule.Outer, luggageRules, alreadyFound, strconv.Itoa(index+1), result)
-			result = partialResult
+		if rule.Outer == "shiny gold bag" {
+			result += recurse(rule.Inner, luggageRules, strconv.Itoa(index+1)) * rule.HowManyInner
 		}
 	}
 
-	fmt.Println("Antall Outer: ", result)
+	fmt.Println("Antall: ", result)
 }
 
-func recurse(outer string, allRules []luggageRule, alreadyFound []string, indent string, result int) (int, []string) {
-	if isAlreadyFound(outer, alreadyFound) {
-		return result, alreadyFound
-	}
-	fmt.Println("Looking for ", outer)
+func recurse(inner string, allRules []luggageRule, indent string) int {
+	result := 0
 	for index, rule := range allRules {
-		fmt.Printf("%s: %s (inner) is contained in %s (outer) \n", indent+"."+strconv.Itoa(index+1), rule.Inner, rule.Outer)
-		if rule.Inner == outer {
-			partialResult := 0
-			partialResult, alreadyFound = recurse(rule.Outer, allRules, alreadyFound, indent+"."+strconv.Itoa(index+1), result)
-			result = partialResult
+		fmt.Printf("%s: Looking for %s in %s -> %s \n", indent+"."+strconv.Itoa(index+1), inner, rule.Outer, rule.Inner)
+		if rule.Outer == inner {
+			if rule.Inner == "" {
+				return 1
+			}
+			result += recurse(rule.Inner, allRules, indent+"."+strconv.Itoa(index+1)) * rule.HowManyInner
 		}
 	}
-	fmt.Printf("%s has not any parents. Adding 1 to result\n", outer)
-	alreadyFound = append(alreadyFound, outer)
-	return result + 1, alreadyFound
+	return result + 1 // + 1 for å ta med seg selv
 }
 
-func isAlreadyFound(ruleToCheck string, alreadyFound []string) bool {
-	for _, found := range alreadyFound {
-		if found == ruleToCheck {
-			return true
-		}
-	}
-	return false
-}
-
-func parseRules(rules []string) []luggageRule {
+func parseRules(rules []string) ([]luggageRule, error) {
 	var ruleList []luggageRule
 
 	for _, rule := range rules {
@@ -76,21 +65,30 @@ func parseRules(rules []string) []luggageRule {
 
 		outerAndInner := strings.Split(rule, " contain ")
 
-		if outerAndInner[1] != "no other bag" {
-			parsedRule := luggageRule{}
-			inner := strings.Split(outerAndInner[1], ", ")
-			for i := 0; i < len(inner); i++ {
-				inner[i] = inner[i][2:]
-				parsedRule.Outer = outerAndInner[0]
-				parsedRule.Inner = inner[i]
-				ruleList = append(ruleList, parsedRule)
+		parsedRule := luggageRule{}
+		inner := strings.Split(outerAndInner[1], ", ")
+		for i := 0; i < len(inner); i++ {
+			num := 0
+			var err error
+			innerBag := ""
+			if inner[i] != "no other bag" {
+				num, err = strconv.Atoi(inner[i][0:1])
+				if err != nil {
+					return nil, err
+				}
+				innerBag = inner[i][2:]
 			}
+			parsedRule.Outer = outerAndInner[0]
+			parsedRule.Inner = innerBag
+			parsedRule.HowManyInner = num
+
+			ruleList = append(ruleList, parsedRule)
 		}
 	}
-	return ruleList
+	return ruleList, nil
 }
 
-func scanMap(path string) ([]string, error) {
+func scanRules(path string) ([]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
