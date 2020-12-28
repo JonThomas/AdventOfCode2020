@@ -7,13 +7,13 @@ import (
 )
 
 type instruction struct {
-	Operator string
-	Count    int
-	Visited  bool
+	Operation string
+	Count     int
+	Visited   bool
 }
 
 // program is a key-value data structure, with pointers to instructions.
-// Pointers makes it possible to make changes to instructions
+// Pointers make it possible to make changes to instructions
 type program map[int]*instruction
 
 func main() {
@@ -30,19 +30,79 @@ func main() {
 		return
 	}
 
+	end := len(program)
+	var originalOperation string
+	var originalIndex int
+
+	for i := end - 1; i > 0; i-- {
+
+		// Change one instruction, so that the program run to its end
+		switch program[i].Operation {
+		case "nop":
+			if originalOperation != "" {
+				program[originalIndex].Operation = originalOperation
+			}
+			originalOperation = "nop"
+			originalIndex = i
+
+			program[i].Operation = "jmp"
+		case "acc":
+			continue
+		case "jmp":
+			if originalOperation != "" {
+				program[originalIndex].Operation = originalOperation
+			}
+			originalOperation = "jmp"
+			originalIndex = i
+
+			program[i].Operation = "nop"
+		default:
+			fmt.Println("Unknown operator error: ", program[i].Operation)
+			return
+		}
+
+		finishedSuccessfully := runProgram(program)
+		if finishedSuccessfully {
+			break
+		}
+
+		// Initialize program for new run
+		for _, instructionToUpdate := range program {
+			instructionToUpdate.Visited = false
+		}
+	}
+
+	fmt.Println("END")
+}
+
+func runProgram(program program) bool {
+	end := len(program)
 	currentInstruction := program[0]
 	currentIndex := 0
 	accumulator := 0
-
 	for {
+		if currentIndex == end {
+			fmt.Printf("Done at instruction %d (of %d). ", currentIndex, end)
+			fmt.Println("Accumulator = ", accumulator)
+			return true
+		}
+
+		if currentIndex > end {
+			fmt.Printf("Done at instruction %d (of %d). ", currentIndex, end)
+			fmt.Println("Accumulator = ", accumulator)
+			return false
+		}
+
 		fmt.Printf("Current instruction: %d - %v\n", currentIndex, program[currentIndex])
 		if program[currentIndex].Visited {
-			break
+			fmt.Printf("Done at instruction %d (of %d). ", currentIndex, end)
+			fmt.Println("Instruction has been hit twice. Accumulator = ", accumulator)
+			return false
 		}
 
 		program[currentIndex].Visited = true
 
-		switch currentInstruction.Operator {
+		switch currentInstruction.Operation {
 		case "nop":
 			currentIndex++
 			currentInstruction = program[currentIndex]
@@ -57,12 +117,10 @@ func main() {
 			currentInstruction = program[currentIndex]
 			continue
 		default:
-			fmt.Println("Unknown operator error: ", currentInstruction.Operator)
-			return
+			fmt.Println("Unknown operator error: ", currentInstruction.Operation)
+			return false
 		}
 	}
-
-	fmt.Println("Done. Accumulator = ", accumulator)
 }
 
 func parseInput(fileLines []string) (program, error) {
@@ -71,7 +129,7 @@ func parseInput(fileLines []string) (program, error) {
 
 	for fileIndex, line := range fileLines {
 		instruction := instruction{}
-		instruction.Operator = line[0:3]
+		instruction.Operation = line[0:3]
 		nr, nrErr := strconv.Atoi(line[4:])
 		if nrErr != nil {
 			return nil, nrErr
