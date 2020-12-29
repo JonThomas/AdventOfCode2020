@@ -91,7 +91,7 @@ func performSeatChange(seatRows [][]byte) (bool, [][]byte) {
 				if rowCopy[seatIndex] != seatStatus {
 					seatChange = true
 				}
-			} else if occupiedAjacentSeats >= 4 {
+			} else if occupiedAjacentSeats >= 5 {
 				rowCopy[seatIndex] = 'L' // free
 				if rowCopy[seatIndex] != seatStatus {
 					seatChange = true
@@ -109,32 +109,41 @@ func performSeatChange(seatRows [][]byte) (bool, [][]byte) {
 func countOccupiedAjacentSeats(rowIndex int, seatIndex int, seatRows [][]byte) int {
 	occupiedSeats := 0
 
-	occupiedSeats += checkIfSeatIsOccupied(rowIndex-1, seatIndex-1, seatRows)
-	occupiedSeats += checkIfSeatIsOccupied(rowIndex-1, seatIndex, seatRows)
-	occupiedSeats += checkIfSeatIsOccupied(rowIndex-1, seatIndex+1, seatRows)
+	occupiedSeats += checkIfSeatIsOccupied(-1, -1, rowIndex, seatIndex, seatRows)
+	occupiedSeats += checkIfSeatIsOccupied(-1, 0, rowIndex, seatIndex, seatRows)
+	occupiedSeats += checkIfSeatIsOccupied(-1, 1, rowIndex, seatIndex, seatRows)
 
-	occupiedSeats += checkIfSeatIsOccupied(rowIndex, seatIndex-1, seatRows)
-	occupiedSeats += checkIfSeatIsOccupied(rowIndex, seatIndex+1, seatRows)
+	occupiedSeats += checkIfSeatIsOccupied(0, -1, rowIndex, seatIndex, seatRows)
+	occupiedSeats += checkIfSeatIsOccupied(0, 1, rowIndex, seatIndex, seatRows)
 
-	occupiedSeats += checkIfSeatIsOccupied(rowIndex+1, seatIndex-1, seatRows)
-	occupiedSeats += checkIfSeatIsOccupied(rowIndex+1, seatIndex, seatRows)
-	occupiedSeats += checkIfSeatIsOccupied(rowIndex+1, seatIndex+1, seatRows)
+	occupiedSeats += checkIfSeatIsOccupied(1, -1, rowIndex, seatIndex, seatRows)
+	occupiedSeats += checkIfSeatIsOccupied(1, 0, rowIndex, seatIndex, seatRows)
+	occupiedSeats += checkIfSeatIsOccupied(1, 1, rowIndex, seatIndex, seatRows)
 
 	return occupiedSeats
 }
 
 // returns 1 if seat is occupied, otherwise 0
-func checkIfSeatIsOccupied(rowIndex int, seatIndex int, seatRows [][]byte) int {
-	if rowIndex < 0 || rowIndex >= numRows {
-		return 0
+func checkIfSeatIsOccupied(rowIndexDelta int, seatIndexDelta int, rowIndex int, seatIndex int, seatRows [][]byte) int {
+
+	for {
+		rowIndex += rowIndexDelta
+		seatIndex += seatIndexDelta
+		if rowIndex < 0 || rowIndex >= numRows {
+			return 0
+		}
+		if seatIndex < 0 || seatIndex >= numSeats {
+			return 0
+		}
+		switch seatRows[rowIndex][seatIndex] {
+		case '#':
+			return 1
+		case '.':
+			continue
+		case 'L':
+			return 0
+		}
 	}
-	if seatIndex < 0 || seatIndex >= numSeats {
-		return 0
-	}
-	if seatRows[rowIndex][seatIndex] == '#' {
-		return 1
-	}
-	return 0
 }
 
 func parseInput(fileLines []string) ([][]byte, error) {
