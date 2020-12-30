@@ -25,53 +25,76 @@ func main() {
 		return
 	}
 
-	// 0 = north, 90 = east, ...
-	direction := 90
+	//          North (-)
+	//              ^
+	//              |
+	// West (-) <-------> East (+)
+	//              |
+	//          South (+)
+
 	xPos := 0
 	yPos := 0
+
+	waypointxPos := 10
+	waypointyPos := -1
 
 	instructionNr := 1
 
 	for _, instruction := range instructions {
 		switch instruction.action {
 		case "N":
-			yPos -= instruction.value
+			waypointyPos -= instruction.value
 		case "E":
-			xPos += instruction.value
+			waypointxPos += instruction.value
 		case "S":
-			yPos += instruction.value
+			waypointyPos += instruction.value
 		case "W":
-			xPos -= instruction.value
+			waypointxPos -= instruction.value
 		case "L":
-			direction -= instruction.value
-			direction = modulus(direction)
+			waypointxPos, waypointyPos = rotateLeft(instruction.value, waypointxPos, waypointyPos)
 		case "R":
-			direction += instruction.value
-			direction = modulus(direction)
+			waypointxPos, waypointyPos = rotateRight(instruction.value, waypointxPos, waypointyPos)
 		case "F":
-			switch direction {
-			case 0:
-				yPos -= instruction.value
-			case 90:
-				xPos += instruction.value
-			case 180:
-				yPos += instruction.value
-			case 270:
-				xPos -= instruction.value
-			default:
-				fmt.Println("Direction ", direction, " is invalid")
-				return
-			}
+			xPos += waypointxPos * instruction.value
+			yPos += waypointyPos * instruction.value
 		default:
 			fmt.Println("Action ", instruction.action, " is invalid")
 			return
 		}
-		fmt.Printf("%d - %v: Now at %d,%d facing %d\n", instructionNr, instruction, xPos, yPos, direction)
+		fmt.Printf("%d - %v: Waypoint at %d, %d. Ship at %d,%d\n", instructionNr, instruction, waypointxPos, waypointyPos, xPos, yPos)
 		instructionNr++
 	}
 
 	fmt.Printf("Manhattan number = abs(%d) + abs(%d) = %d\n", xPos, yPos, abs(xPos)+abs(yPos))
 	fmt.Println("END")
+}
+
+func rotateLeft(degrees int, waypointxPos int, waypointyPos int) (int, int) {
+	if degrees == 0 {
+		return waypointxPos, waypointyPos
+	}
+
+	tmpx := 0
+	for i := 0; i < degrees/90; i++ {
+		tmpx = waypointxPos
+		waypointxPos = waypointyPos
+		waypointyPos = -tmpx
+	}
+	return waypointxPos, waypointyPos
+}
+
+func rotateRight(degrees int, waypointxPos int, waypointyPos int) (int, int) {
+	if degrees == 0 {
+		return waypointxPos, waypointyPos
+	}
+
+	tmpx := 0
+	for i := 0; i < degrees/90; i++ {
+		tmpx = waypointxPos
+		waypointxPos = -waypointyPos
+		waypointyPos = tmpx
+	}
+	return waypointxPos, waypointyPos
 }
 
 // Abs returns the absolute value of x.
