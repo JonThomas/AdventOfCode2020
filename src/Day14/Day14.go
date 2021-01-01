@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"jonthomas/AdventOfCode2020/files"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -15,7 +16,7 @@ type memwrite struct {
 
 func main() {
 
-	memory := make(map[int]int64)
+	memory := make(map[int]int)
 
 	file, err := files.ReadFile("./Day14Input.txt")
 	if err != nil {
@@ -31,63 +32,91 @@ func main() {
 
 	printParsedInput(memwrite)
 
-	largestAddress := findLargestAddress(memwrite)
-
-	for _, writeOp := range memwrite {
-		memory[writeOp.address], err = calculateMaskedValue(writeOp.number, writeOp.mask)
+	for memIndex, writeOp := range memwrite {
+		addresses, err := calculateMaskedValue(writeOp.address, writeOp.mask)
 		if err != nil {
 			fmt.Println("Memory caluclation error: ", err)
 			return
 		}
+		for _, address := range addresses {
+			memory[address] = writeOp.number
+		}
+		fmt.Printf("%d: Added %d addresses.\n", memIndex, len(addresses))
 	}
 
-	var theAnswer int64 = 0
-	for i := 0; i <= largestAddress; i++ {
-		theAnswer += memory[i]
+	var theAnswer int = 0
+	for _, memValue := range memory {
+		theAnswer += memValue
 	}
 
-	fmt.Printf("Found solution: %d\n", theAnswer)
+	fmt.Printf("\nFound solution: %d\n", theAnswer)
 }
 
-func calculateMaskedValue(number int, mask string) (int64, error) {
-	maskLen := len(mask)
+func calculateMaskedValue(address int, mask string) ([]int, error) {
 
-	var newBinaryNumber strings.Builder
-	newBinaryNumber.Grow(maskLen)
+	maskLen := 36
+	var newBinaryAddress strings.Builder
+	newBinaryAddress.Grow(maskLen)
 
-	numberBinary := strconv.FormatInt(int64(number), 2)
-	numberBinaryPadded := fmt.Sprintf("%036v", numberBinary) // %036 means: Pads with 0's to 36 characters
+	addressBinary := strconv.FormatInt(int64(address), 2)
+	addressBinaryPadded := fmt.Sprintf("%036v", addressBinary) // %036 means: Pads with 0's to 36 characters
 
 	for i := 0; i < maskLen; i++ {
 		switch mask[i] {
 		case '0':
-			newBinaryNumber.Write([]byte{'0'})
+			digit := addressBinaryPadded[i : i+1]
+			newBinaryAddress.WriteString(digit)
 		case '1':
-			newBinaryNumber.Write([]byte{'1'})
+			newBinaryAddress.Write([]byte{'1'})
 		case 'X':
-			digit := numberBinaryPadded[i : i+1]
-			newBinaryNumber.WriteString(digit)
+			newBinaryAddress.Write([]byte{'X'})
 		default:
-			return 0, fmt.Errorf("Unknown mask value: %s" + string(mask[i]))
+			return nil, fmt.Errorf("Unknown mask value: %s" + string(mask[i]))
 		}
 	}
 
-	binString := newBinaryNumber.String()
-	dec, err := strconv.ParseInt(binString, 2, 64)
+	newBinaryAddressString := newBinaryAddress.String()
+	addresses, err := generateAddresses(newBinaryAddressString)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return dec, nil
+
+	return addresses, nil
 }
 
-func findLargestAddress(writeOps []memwrite) int {
-	largestAddress := 0
-	for _, op := range writeOps {
-		if op.address > largestAddress {
-			largestAddress = op.address
+func generateAddresses(newBinaryNumber string) ([]int, error) {
+	var addresses []int
+
+	numberOfXs := strings.Count(newBinaryNumber, "X")
+	numberOfaddresses := int(math.Pow(2, float64(numberOfXs)))
+	for i := 0; i < numberOfaddresses; i++ {
+
+		// 1: Convert i to binary number, padded to length (numberOfXs)
+		binaryI := strconv.FormatInt(int64(i), 2)
+		formatMask := "%" + fmt.Sprintf("0%dv", numberOfXs)
+		binaryI = fmt.Sprintf(formatMask, binaryI)
+
+		// 2: Replace Xs in copy with each digit in binary representation of i
+		addressBinary := replaceXs(newBinaryNumber, binaryI)
+
+		// 3: Converty binary string to decimal
+		address, err := strconv.ParseInt(addressBinary, 2, 64)
+		if err != nil {
+			return nil, err
 		}
+
+		addresses = append(addresses, int(address))
 	}
-	return largestAddress
+
+	return addresses, nil
+}
+
+func replaceXs(binaryNumberWithXs string, willOverwriteXs string) string {
+	newAddress := binaryNumberWithXs
+	for _, char := range willOverwriteXs {
+		newAddress = strings.Replace(newAddress, "X", string(char), 1)
+	}
+	return newAddress
 }
 
 func printParsedInput(program []memwrite) {
