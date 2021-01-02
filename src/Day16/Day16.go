@@ -3,16 +3,34 @@ package main
 import (
 	"fmt"
 	"jonthomas/AdventOfCode2020/files"
+	"sort"
 	"strconv"
 	"strings"
 )
 
 type ticketInfo struct {
-	field  string
-	start1 int
-	end1   int
-	start2 int
-	end2   int
+	field           string
+	start1          int
+	end1            int
+	start2          int
+	end2            int
+	possibleColumns []int
+	column          int
+}
+
+type ticketInfoList []ticketInfo
+
+// Functions for sorting tickets
+func (t ticketInfoList) Len() int {
+	return len(t)
+}
+
+func (t ticketInfoList) Less(i, j int) bool {
+	return len(t[i].possibleColumns) < len(t[j].possibleColumns)
+}
+
+func (t ticketInfoList) Swap(i, j int) {
+	t[i], t[j] = t[j], t[i]
 }
 
 type ticket []int
@@ -26,36 +44,89 @@ func main() {
 	}
 
 	ticketNotes, _ := parseTicketNotes(file)
-	tickets, err := parseTickets(file)
+
+	smallesNoteNumber := findSmallest(ticketNotes)
+	largestNoteNumber := findLargest(ticketNotes)
+
+	tickets, err := parseTickets(file, smallesNoteNumber, largestNoteNumber)
 	if err != nil {
-		fmt.Println("File reading error", err)
+		fmt.Println("Parse ticket error", err)
 		return
 	}
 
 	printParsedInput(ticketNotes, tickets)
 
-	smallesNoteNumber := findSmallest(ticketNotes)
-	largestNoteNumber := findLargest(ticketNotes)
-
-	ticketErrorRate := 0
-
-	// Check if any *nearby* tickets are valid
-	// Skipping my ticket in row 0
-	for i := 1; i < len(tickets); i++ {
-		ticketErrorRate += findTicketErrorRate(tickets[i], smallesNoteNumber, largestNoteNumber)
+	// Loop through each ticket note, and find matching colums
+	for noteIndex := 0; noteIndex < len(ticketNotes); noteIndex++ {
+		possibleColumns := findPossibleColumns(ticketNotes[noteIndex], tickets)
+		ticketNotes[noteIndex].possibleColumns = possibleColumns
+		//	fmt.Printf("Possible columns for %s: %v\n", tNote.field, possibleColumns)
 	}
 
-	fmt.Printf("\nFound solution: Number of invalid tickets = %d \n", ticketErrorRate)
-}
+	// Sorting notes by length of possible columns, using sorting fuction above
+	sort.Sort(ticketInfoList(ticketNotes))
 
-func findTicketErrorRate(t ticket, smallesNoteNumber int, largestNoteNumber int) int {
-	errorRate := 0
-	for _, num := range t {
-		if num < smallesNoteNumber || num > largestNoteNumber {
-			errorRate += num
+	var usedColumns []int
+	answer := 1
+
+	for idx, tNote := range ticketNotes {
+		for _, possibleColumn := range tNote.possibleColumns {
+			if !isUsed(possibleColumn, usedColumns) {
+				ticketNotes[idx].column = possibleColumn
+				usedColumns = append(usedColumns, possibleColumn)
+			}
+		}
+
+		fmt.Printf("%s: Column = %d. %d possible columns: %v\n", tNote.field, ticketNotes[idx].column, len(tNote.possibleColumns), tNote.possibleColumns)
+
+		// If this is a "Departure *" columns, multiply the number in my ticket
+		if len(tNote.field) > 10 && tNote.field[0:10] == "departure " {
+			answer *= tickets[0][ticketNotes[idx].column]
 		}
 	}
-	return errorRate
+
+	fmt.Printf("\nFound solution: Number of invalid tickets = %d \n", answer)
+}
+
+func isUsed(possibleColumn int, usedColumns []int) bool {
+	for _, thisCol := range usedColumns {
+		if thisCol == possibleColumn {
+			return true
+		}
+	}
+	return false
+}
+
+func findPossibleColumns(departureLocation ticketInfo, tickets []ticket) []int {
+	var columnMatches []int
+	for column := 0; column < len(tickets[0]); column++ {
+		if allNumbersInColumnFit(column, departureLocation, tickets) {
+			columnMatches = append(columnMatches, column)
+		}
+	}
+
+	return columnMatches
+}
+
+func allNumbersInColumnFit(column int, departureLocation ticketInfo, tickets []ticket) bool {
+	for i := 0; i < len(tickets); i++ {
+		numberToCheck := tickets[i][column]
+		if numberToCheck < departureLocation.start1 ||
+			(numberToCheck > departureLocation.end1 && numberToCheck < departureLocation.start2) ||
+			numberToCheck > departureLocation.end2 {
+			return false
+		}
+	}
+	return true
+}
+
+func isTicketValid(t ticket, smallesNoteNumber int, largestNoteNumber int) bool {
+	for _, num := range t {
+		if num < smallesNoteNumber || num > largestNoteNumber {
+			return false
+		}
+	}
+	return true
 }
 
 func findSmallest(info []ticketInfo) int {
@@ -78,12 +149,13 @@ func findLargest(info []ticketInfo) int {
 	return largest
 }
 
-func printParsedInput(ticketNotes []ticketInfo, tickets []ticket) {
+func printParsedInput(ticketNotes ticketInfoList, tickets []ticket) {
 	for _, note := range ticketNotes {
 		fmt.Printf("%s: %d-%d | %d-%d\n", note.field, note.start1, note.end1, note.start2, note.end2)
 	}
 	fmt.Println()
-	for _, ticket := range tickets {
+	for ticketIdx, ticket := range tickets {
+		fmt.Printf("%d: ", ticketIdx)
 		for _, nr := range ticket {
 			fmt.Printf("%d, ", nr)
 		}
@@ -138,7 +210,7 @@ func splitRange(dashSeparated string) (int, int, error) {
 	return start, end, nil
 }
 
-func parseTickets(fileLines []string) ([]ticket, error) {
+func parseTickets(fileLines []string, smallesNoteNumber int, largestNoteNumber int) ([]ticket, error) {
 
 	var allTickets []ticket
 
@@ -166,7 +238,9 @@ func parseTickets(fileLines []string) ([]ticket, error) {
 			thisTicket = append(thisTicket, num)
 		}
 
-		allTickets = append(allTickets, thisTicket)
+		if isTicketValid(thisTicket, smallesNoteNumber, largestNoteNumber) {
+			allTickets = append(allTickets, thisTicket)
+		}
 	}
 
 	return allTickets, nil
