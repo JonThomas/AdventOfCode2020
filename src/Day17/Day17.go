@@ -5,10 +5,10 @@ import (
 	"jonthomas/AdventOfCode2020/files"
 )
 
-// cube[z][y][x]
+// cube[w][z][y][x]
 // 1 = active
 // 0 = inactive
-type cube [][][]int
+type cube [][][][]int
 
 var endAtCycle int = 6
 var cubeSize int
@@ -37,7 +37,7 @@ func main() {
 	theCube = moveToCycle(5, theCube)
 	theCube = moveToCycle(6, theCube)
 
-	printCube(6, theCube)
+	//printCube(6, theCube)
 
 	answer := countActive(theCube)
 
@@ -46,10 +46,12 @@ func main() {
 
 func countActive(theCube cube) int {
 	answer := 0
-	for z := 0; z < cubeSize; z++ {
-		for y := 0; y < cubeSize; y++ {
-			for x := 0; x < cubeSize; x++ {
-				answer += theCube[z][y][x]
+	for w := 0; w < cubeSize; w++ {
+		for z := 0; z < cubeSize; z++ {
+			for y := 0; y < cubeSize; y++ {
+				for x := 0; x < cubeSize; x++ {
+					answer += theCube[w][z][y][x]
+				}
 			}
 		}
 	}
@@ -65,22 +67,24 @@ func moveToCycle(cycle int, theCube cube) cube {
 
 	fmt.Printf("Calculating cycle %d. Top left = (%d,%d,%d)\n", cycle, start, start, start)
 
-	for z := start; z < end; z++ {
-		for y := start; y < end; y++ {
-			for x := start; x < end; x++ {
-				activeNeighbors := countAciveNeighbors(x, y, z, theCube)
-				if theCube[z][y][x] == 1 { // Active cube
-					if activeNeighbors == 2 || activeNeighbors == 3 {
-						newCube[z][y][x] = 1
+	for w := start; w < end; w++ {
+		for z := start; z < end; z++ {
+			for y := start; y < end; y++ {
+				for x := start; x < end; x++ {
+					activeNeighbors := countAciveNeighbors(x, y, z, w, theCube)
+					if theCube[w][z][y][x] == 1 { // Active cube
+						if activeNeighbors == 2 || activeNeighbors == 3 {
+							newCube[w][z][y][x] = 1
+						} else {
+							newCube[w][z][y][x] = 0
+						}
 					} else {
-						newCube[z][y][x] = 0
-					}
-				} else {
-					// Inactive cube
-					if activeNeighbors == 3 {
-						newCube[z][y][x] = 1
-					} else {
-						newCube[z][y][x] = 0
+						// Inactive cube
+						if activeNeighbors == 3 {
+							newCube[w][z][y][x] = 1
+						} else {
+							newCube[w][z][y][x] = 0
+						}
 					}
 				}
 			}
@@ -89,48 +93,32 @@ func moveToCycle(cycle int, theCube cube) cube {
 	return newCube
 }
 
-func countAciveNeighbors(x int, y int, z int, theCube cube) int {
+func countAciveNeighbors(x int, y int, z int, w int, theCube cube) int {
 	activeNeighbors := 0
-	activeNeighbors += checkIfActive(x-1, y-1, z-1, theCube)
-	activeNeighbors += checkIfActive(x-1, y, z-1, theCube)
-	activeNeighbors += checkIfActive(x-1, y+1, z-1, theCube)
-	activeNeighbors += checkIfActive(x, y-1, z-1, theCube)
-	activeNeighbors += checkIfActive(x, y, z-1, theCube)
-	activeNeighbors += checkIfActive(x, y+1, z-1, theCube)
-	activeNeighbors += checkIfActive(x+1, y-1, z-1, theCube)
-	activeNeighbors += checkIfActive(x+1, y, z-1, theCube)
-	activeNeighbors += checkIfActive(x+1, y+1, z-1, theCube)
-
-	activeNeighbors += checkIfActive(x-1, y-1, z, theCube)
-	activeNeighbors += checkIfActive(x-1, y, z, theCube)
-	activeNeighbors += checkIfActive(x-1, y+1, z, theCube)
-	activeNeighbors += checkIfActive(x, y-1, z, theCube)
-	activeNeighbors += checkIfActive(x, y+1, z, theCube)
-	activeNeighbors += checkIfActive(x+1, y-1, z, theCube)
-	activeNeighbors += checkIfActive(x+1, y, z, theCube)
-	activeNeighbors += checkIfActive(x+1, y+1, z, theCube)
-
-	activeNeighbors += checkIfActive(x-1, y-1, z+1, theCube)
-	activeNeighbors += checkIfActive(x-1, y, z+1, theCube)
-	activeNeighbors += checkIfActive(x-1, y+1, z+1, theCube)
-	activeNeighbors += checkIfActive(x, y-1, z+1, theCube)
-	activeNeighbors += checkIfActive(x, y, z+1, theCube)
-	activeNeighbors += checkIfActive(x, y+1, z+1, theCube)
-	activeNeighbors += checkIfActive(x+1, y-1, z+1, theCube)
-	activeNeighbors += checkIfActive(x+1, y, z+1, theCube)
-	activeNeighbors += checkIfActive(x+1, y+1, z+1, theCube)
-
+	for newW := w - 1; newW <= w+1; newW++ {
+		for newX := x - 1; newX <= x+1; newX++ {
+			for newY := y - 1; newY <= y+1; newY++ {
+				for newZ := z - 1; newZ <= z+1; newZ++ {
+					if newX == x && newY == y && newZ == z && newW == w {
+						continue
+					}
+					activeNeighbors += checkIfActive(newX, newY, newZ, newW, theCube)
+				}
+			}
+		}
+	}
 	return activeNeighbors
 }
 
-func checkIfActive(x int, y int, z int, theCube cube) int {
+func checkIfActive(x int, y int, z int, w int, theCube cube) int {
 
 	if x < 0 || x >= cubeSize ||
 		y < 0 || y >= cubeSize ||
-		z < 0 || z >= cubeSize {
+		z < 0 || z >= cubeSize ||
+		w < 0 || w >= cubeSize {
 		return 0
 	}
-	return theCube[z][y][x]
+	return theCube[w][z][y][x]
 }
 
 func printCube(cycle int, theCube cube) {
@@ -146,19 +134,21 @@ func printCube(cycle int, theCube cube) {
 		zEnd = cubeSize - start - 1
 	}
 
-	for z := start; z < -zEnd; z++ {
-		fmt.Printf("\nz=%d. Top left = (%d,%d,%d)\n", z-start-cycle, start, start, start)
+	for w := start; w < zEnd; w++ {
+		for z := start; z < zEnd; z++ {
+			fmt.Printf("\nz=%d, w=%d. Top left = (%d,%d,%d)\n", z-start-cycle, w-start-cycle, start, start, start)
 
-		for y := start + 1; y < end; y++ {
-			for x := start; x < end; x++ {
-				if theCube[z][y][x] == 1 {
-					fmt.Print("#")
-				} else {
-					fmt.Print(".")
+			for y := start + 1; y < end; y++ {
+				for x := start; x < end; x++ {
+					if theCube[w][z][y][x] == 1 {
+						fmt.Print("#")
+					} else {
+						fmt.Print(".")
+					}
+
 				}
-
+				fmt.Println()
 			}
-			fmt.Println()
 		}
 	}
 }
@@ -170,6 +160,7 @@ func parseInput(fileLines []string) (cube, error) {
 
 	thisCube := initializeCube(cubeSize)
 
+	w := endAtCycle
 	z := endAtCycle
 	y := endAtCycle
 	x := endAtCycle
@@ -178,9 +169,9 @@ func parseInput(fileLines []string) (cube, error) {
 
 		for _, char := range line {
 			if char == '#' {
-				thisCube[z][y][x] = 1
+				thisCube[w][z][y][x] = 1
 			} else {
-				thisCube[z][y][x] = 0
+				thisCube[w][z][y][x] = 0
 			}
 			x++
 		}
@@ -195,11 +186,14 @@ func initializeCube(cubeSize int) cube {
 
 	var thisCube = make(cube, cubeSize)
 
-	// initialize cube with 3 dimesions of size (cubeSize)
+	// initialize cube with 4 dimesions of size (cubeSize)
 	for i := range thisCube {
-		thisCube[i] = make([][]int, cubeSize)
+		thisCube[i] = make([][][]int, cubeSize)
 		for j := range thisCube[i] {
-			thisCube[i][j] = make([]int, cubeSize)
+			thisCube[i][j] = make([][]int, cubeSize)
+			for k := range thisCube[i][j] {
+				thisCube[i][j][k] = make([]int, cubeSize)
+			}
 		}
 	}
 	return thisCube
