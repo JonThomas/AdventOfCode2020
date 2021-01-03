@@ -85,7 +85,7 @@ func main() {
 		}
 	}
 
-	fmt.Printf("\nFound solution: Number of invalid tickets = %d \n", answer)
+	fmt.Printf("\nFound solution: Answer = %d \n", answer)
 }
 
 func isUsed(possibleColumn int, usedColumns []int) bool {
