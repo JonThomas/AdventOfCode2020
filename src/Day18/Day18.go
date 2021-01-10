@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"jonthomas/AdventOfCode2020/datastructures"
 	"jonthomas/AdventOfCode2020/files"
 	"strconv"
 	"strings"
@@ -24,7 +25,11 @@ func main() {
 	answer := 0
 	thisLineAnswer := 0
 	for lineNr, line := range parsedInput {
-		thisLineAnswer, _ = findNextValue(line)
+		thisLineAnswer, _, err = findNextValue(line)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 		answer += thisLineAnswer
 		fmt.Printf("\nLine %d: This line = %d. Total answer = %d\n", lineNr, thisLineAnswer, answer)
 	}
@@ -32,11 +37,12 @@ func main() {
 	fmt.Printf("END. Answer = %d\n", answer)
 }
 
-// Returns (answer, new index into expression)
-func findNextValue(val expression) (int, int) {
+// Had good help from https://leetcode.com/problems/basic-calculator-ii/solution/ for this one
+func findNextValue(val expression) (int, int, error) {
 
-	currentAnswer := 0
-	var currentOperation byte = ' '
+	stack := new(datastructures.Stack)
+	currentNumber := 0
+	answer := 1
 
 	for i := 0; i < len(val); i++ {
 		next := val[i]
@@ -44,41 +50,58 @@ func findNextValue(val expression) (int, int) {
 
 		number, _ := strconv.Atoi(string(next))
 		if number != 0 {
-			currentAnswer, currentOperation = calculate(currentOperation, number, currentAnswer)
+			currentNumber = number
 			continue
 		}
+
 		switch next {
-		case '+':
-			currentOperation = '+'
 		case '*':
-			currentOperation = '*'
+			addedNums, err := addAllNumbers(stack)
+			if err != nil {
+				return -1, -1, err
+			}
+			answer *= (currentNumber + addedNums)
+		case '+':
+			stack.Push(currentNumber)
 		case '(':
-			subValue, j := findNextValue(val[i+1:])
+			subValue, j, err := findNextValue(val[i+1:])
+			if err != nil {
+				return -1, -1, err
+			}
 			i += j
-			currentAnswer, currentOperation = calculate(currentOperation, subValue, currentAnswer)
+			currentNumber = subValue
 		case ')':
-			return currentAnswer, i + 1
+			addedNums, err := addAllNumbers(stack)
+			if err != nil {
+				return -1, -1, err
+			}
+			answer *= (currentNumber + addedNums)
+			return answer, i + 1, nil
 		default:
 			fmt.Printf("\nfindNextValue: Operation %c is unknown (%s)", next, val)
 		}
 	}
-	return currentAnswer, -1
+
+	addedNums, err := addAllNumbers(stack)
+	if err != nil {
+		return -1, -1, err
+	}
+	answer *= (currentNumber + addedNums)
+
+	return answer, -1, nil
 }
 
-func calculate(currentOperation byte, number int, currentAnswer int) (int, byte) {
-	if currentOperation == '+' {
-		currentAnswer += number
-		currentOperation = ' '
-	} else if currentOperation == '*' {
-		if currentAnswer == 0 {
-			currentAnswer = 1
+func addAllNumbers(stack *datastructures.Stack) (int, error) {
+	subVal := 0
+	for stack.Len() > 0 {
+		v, err := stack.Pop()
+		if err == nil {
+			subVal += v
+		} else {
+			return 0, err
 		}
-		currentAnswer *= number
-		currentOperation = ' '
-	} else if currentOperation == ' ' {
-		currentAnswer = number
 	}
-	return currentAnswer, currentOperation
+	return subVal, nil
 }
 
 func parseInput(file []string) []expression {
